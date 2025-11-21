@@ -29,6 +29,8 @@ document.addEventListener("DOMContentLoaded", () => {
     Object.entries(activities).forEach(([name, info]) => {
       const activityCard = document.createElement("div");
       activityCard.className = "activity-card";
+      // attach the activity name for delegated event handlers
+      activityCard.dataset.activity = name;
       const participantsHtml = renderParticipants(info.participants);
       activityCard.innerHTML = `
         <div class="card-header">
@@ -50,9 +52,47 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!Array.isArray(list) || list.length === 0) {
       return `<p class="participants-empty">No participants yet.</p>`;
     }
-    const items = list.map((e) => `<li>${escapeHtml(e)}</li>`).join("");
+    const items = list
+      .map(
+        (e) =>
+          `<li class="participant-item" data-email="${escapeHtml(e)}"><span class="participant-email">${escapeHtml(
+            e
+          )}</span><button class="delete-btn" title="Remove participant" aria-label="Remove participant">🗑️</button></li>`
+      )
+      .join("");
     return `<ul class="participants">${items}</ul>`;
   }
+
+  // Delegated click handler for delete buttons
+  activitiesList.addEventListener("click", async (event) => {
+    const btn = event.target.closest(".delete-btn");
+    if (!btn) return;
+    const li = btn.closest(".participant-item");
+    if (!li) return;
+    const email = li.dataset.email;
+    const card = li.closest(".activity-card");
+    if (!card) return;
+    const activity = card.dataset.activity;
+    if (!email || !activity) return;
+
+    // confirm removal
+    if (!confirm(`Remove ${email} from ${activity}?`)) return;
+
+    try {
+      const url = `/activities/${encodeURIComponent(activity)}/participants?email=${encodeURIComponent(email)}`;
+      const resp = await fetch(url, { method: "DELETE" });
+      const body = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(body.detail || body.message || "Failed to remove participant");
+      // remove list item from DOM
+      li.remove();
+      // if no participants remain, show empty message by refreshing activities
+      // (keeps UI consistent with server state)
+      await fetchActivities();
+    } catch (err) {
+      alert(err.message || "Could not remove participant");
+      console.error(err);
+    }
+  });
 
   function populateSelect(activities) {
     // clear existing options except the placeholder
