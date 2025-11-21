@@ -1,2 +1,5 @@
-fastapi
-uvicorn
+fastapi==0.121.3
+uvicorn==0.38.0
+pytest==9.0.1
+requests==2.32.5
+httpx==0.28.1

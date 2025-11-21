@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>Mergington High — Activities</title>
+	<style>
+		:root{
+			--bg:#f5f7fb; --card:#ffffff; --muted:#6b7280; --accent:#2563eb;
+			--shadow: 0 6px 18px rgba(16,24,40,0.08);
+			font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+		}
+		body{ margin:0; padding:32px; background:var(--bg); color:#0f172a; }
+		h1{ margin:0 0 18px 0; font-size:20px; }
+		.container{ max-width:1100px; margin:0 auto; }
+		.grid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap:18px; margin-top:18px; }
+		.card{ background:var(--card); padding:18px; border-radius:12px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px; }
+		.title-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
+		.title{ font-weight:600; font-size:16px; }
+		.meta{ color:var(--muted); font-size:13px; }
+		.desc{ color:#0f172a; font-size:14px; line-height:1.3; }
+		.participants{ margin:0; padding-left:18px; color:#0f172a; }
+		.participants li{ margin:6px 0; font-size:14px; }
+		.participants-empty{ color:var(--muted); font-size:13px; margin:0; }
+		.badge{ background:#eef2ff; color:var(--accent); font-weight:600; padding:6px 10px; border-radius:999px; font-size:12px; }
+		.footer{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:8px; }
+		.small{ color:var(--muted); font-size:13px; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h1>Mergington High — Extracurricular Activities</h1>
+		<p class="small">Browse activities and see who has already signed up.</p>
+
+		<div id="grid" class="grid" aria-live="polite">
+			<!-- activity cards will be injected here -->
+		</div>
+	</div>
+
+	<script>
+		async function loadActivities(){
+			try{
+				const res = await fetch('/activities');
+				if(!res.ok) throw new Error('Failed to load activities');
+				const data = await res.json();
+				renderActivities(data);
+			}catch(err){
+				document.getElementById('grid').innerHTML = '<p style="color:#b91c1c">Unable to load activities.</p>';
+				console.error(err);
+			}
+		}
+
+		function renderActivities(activities){
+			const grid = document.getElementById('grid');
+			grid.innerHTML = '';
+			// activities is an object keyed by activity name
+			Object.entries(activities).forEach(([name, info])=>{
+				const card = document.createElement('article');
+				card.className = 'card';
+				card.innerHTML = `
+					<div class="title-row">
+						<div>
+							<div class="title">${escapeHtml(name)}</div>
+							<div class="meta">${escapeHtml(info.schedule || '')}</div>
+						</div>
+						<div class="badge">${(info.participants?.length||0)}/${info.max_participants}</div>
+					</div>
+					<div class="desc">${escapeHtml(info.description || '')}</div>
+					<div>
+						<strong class="small">Participants</strong>
+						${renderParticipantsList(info.participants)}
+					</div>
+					<div class="footer">
+						<div class="small">Max: ${info.max_participants}</div>
+						<!-- optional actions could go here -->
+					</div>
+				`;
+				grid.appendChild(card);
+			});
+		}
+
+		function renderParticipantsList(list){
+			if(!Array.isArray(list) || list.length === 0){
+				return `<p class="participants-empty">No participants yet.</p>`;
+			}
+			const items = list.map(email => `<li>${escapeHtml(email)}</li>`).join('');
+			return `<ul class="participants">${items}</ul>`;
+		}
+
+		// minimal HTML-escape utility
+		function escapeHtml(s){
+			if(s == null) return '';
+			return String(s)
+				.replaceAll('&','&amp;')
+				.replaceAll('<','&lt;')
+				.replaceAll('>','&gt;')
+				.replaceAll('"','&quot;')
+				.replaceAll("'",'&#39;');
+		}
+
+		// load on startup
+		loadActivities();
+	</script>
+</body>
+</html>
